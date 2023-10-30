@@ -10,9 +10,15 @@
 
 #include "gawkapi.h"
 
+#if defined(__WIN32) || defined(__WIN64)
+ #define _PATHSEP "\\"
+#else
+ #define _PATHSEP "/"
+#endif
+
 #define __module__ "sysutils"
 #define eprint(fmt, ...) fprintf(stderr, __msg_prologue fmt, __module__, __func__, ##__VA_ARGS__)
-#define _DEBUGLVL 1
+#define _DEBUGLVL 0
 #if (_DEBUGLVL)
 #define dprint eprint
 #define __msg_prologue "Debug: %s @%s: "
@@ -23,8 +29,9 @@
 
 typedef char * String;
 
-static awk_value_t * do_rm(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
+static awk_value_t * do_getcwd(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 static awk_value_t * do_mktemp(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
+static awk_value_t * do_rm(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 
 /* ----- boilerplate code ----- */
 int plugin_is_GPL_compatible;
@@ -34,8 +41,9 @@ static awk_ext_id_t ext_id;
 static const char *ext_version = "0.1";
 
 static awk_ext_func_t func_table[] = {
-  { "rm", do_rm, 1, 1, awk_false, NULL },
+  { "getcwd", do_getcwd, 0, 0, awk_false, NULL },
   { "mktemp", do_mktemp, 1, 0, awk_false, NULL },
+  { "rm", do_rm, 1, 1, awk_false, NULL },
 };
 
 static awk_bool_t (*init_func)(void) = NULL;
@@ -71,35 +79,54 @@ int dl_load(const gawk_api_t *api_p, void *id) {
 /*********************/
 /* UTILITY FUNCTIONS */
 /*********************/
-//XXX: add getcwd ext func
 
-String alloc_string(String str, size_t new_size, int re_alloc) {
-  if (re_alloc) {
-    dprint("(malloc) size=%zu\n", new_size);
-    if (NULL == (str = malloc(sizeof(String) * new_size))) {
-      return NULL;
-    } else
-      return str;
-  } else {
-    dprint("(realloc) new_size=%zu\n", new_size);
-    if (NULL == (str = realloc(str, sizeof(str) * new_size))) {
-      return NULL;
-    } else
-      return str;
+String alloc_string(String str, size_t size) {
+  /*
+  * Allocates $size bytes for the String $str and returns a pointer
+  * to the allocate memory (or NULL if something went wrong).
+  * $str must be either NULL or a pointer returned from a
+  * previously call of (c|m|re)alloc.
+  */
+    dprint("(re/alloc) size=%zu\n", size);
+    str = realloc(str, sizeof(String) * size);
+    return str;
+}
+
+String path_join(String first, String last) {
+  /*
+   * Joins the two path component $first and $last in a
+   * newly allocated String, which is returned if the process
+   * succedes. If fails, returns NULL.
+   */
+  String joined = NULL;
+  if (NULL == (joined = alloc_string(joined, 1 + strlen(_PATHSEP) + strlen(first) + strlen(last)))) {
+    eprint("%s", strerror(errno));
+    return NULL;
   }
+  joined = strncpy(joined, first, strlen(first));
+  if (strncmp(& first[strlen(first)-1], _PATHSEP, 1))
+    strncat(joined, _PATHSEP, strlen(_PATHSEP));
+  strncat(joined, last, strlen(last));
+  return joined;
 }
 
 String get_current_dir(String dest, size_t size) {
+  /*
+   * Writes on $dest the path of the current working directory,
+   * or NULL if fails.
+   * $size is the initial size to allocate for $dest.
+   * Returns $dest.
+   */
   while (1) {
     if (NULL == (dest = getcwd(dest, size))) {
       if (errno == ERANGE) {
 	size *= 2;
-	if (NULL == (dest = alloc_string(dest, size, 1))) {
-	  eprint("%s\n", strerror(errno));
+	if (NULL == (dest = alloc_string(dest, size))) {
+	  eprint("%s", strerror(errno));
 	  return NULL;
 	}
       } else {
-	eprint("%s\n", strerror(errno));
+	eprint("%s", strerror(errno));
 	return NULL;
       }
     } else {
@@ -113,15 +140,55 @@ String get_current_dir(String dest, size_t size) {
 /* EXTENSION FUNCTIONS */
 /***********************/
 
+static awk_value_t * do_getcwd(int nargs, awk_value_t *result, struct awk_ext_func *finfo) {
+  /*
+   * Returns the path of the current working directory,
+   * or an empty string if fails.
+   */
+  String pathname;
+  String current_dir = NULL;
+  size_t dir_size = 100;
+
+  assert(result != NULL);
+  emalloc(pathname, String, sizeof(""), __func__);
+  strcpy(pathname, "");
+  make_malloced_string(pathname, strlen(pathname), result);
+
+  if (nargs > 0) {
+    eprint("too many arguments");
+    goto out;
+  }
+  if (NULL == (current_dir = get_current_dir(current_dir, dir_size)))
+    goto out;
+  
+  erealloc(pathname, String, strlen(current_dir)+1, __func__);
+  strcpy(pathname, current_dir);
+  make_malloced_string(pathname, strlen(pathname), result);
+
+ out:
+  free(current_dir);
+  return result;
+}
+
 static awk_value_t * do_mktemp(int nargs, awk_value_t *result, struct awk_ext_func *finfo) {
+  /*
+  * Returns the path of a just created temporary file,
+  * or the empty string if fails.
+  * By default the temporary file is created in the current working directory
+  * but, if $nargs[0] is provided, this's must be a path to another directory
+  * in which the temporary file will be placed.
+  * See <man 3 mkstemp> for details.
+  */
   String pathname = NULL;
   String currdir = NULL;
+  String fullpath = NULL;
   String cwd = NULL;
   size_t currdirsize = 100;
   awk_value_t tmp_dir;
   int fd;
   char template[] = "tmp_XXXXXX";
-  mode_t prev_umask = umask(S_IWGRP | S_IWOTH);
+
+  umask(S_IWGRP | S_IWOTH);
 
   assert(result != NULL);
   emalloc(pathname, String, sizeof(""), __func__);
@@ -133,54 +200,42 @@ static awk_value_t * do_mktemp(int nargs, awk_value_t *result, struct awk_ext_fu
   cwd = currdir;
   
   if (nargs > 1) {
-    eprint("too many arguments\n");
+    eprint("too many arguments");
     goto out;
   } else if (nargs == 1) {
     if (! get_argument(0, AWK_STRING, & tmp_dir)) {
       eprint("can't retrieve dir\n");
       goto out;
     } 
-    if (-1 == chdir(tmp_dir.str_value.str)) {
-      eprint("%s <%s>\n", strerror(errno), tmp_dir.str_value.str);
-      goto out;
-    }
     cwd = tmp_dir.str_value.str;
   }
 
-  dprint("cwd is <%s>\n", cwd);
+  if (NULL == (fullpath = path_join(cwd, template)))
+    goto out;
 
-  if (-1 == (fd = mkstemp(template))) {
-    eprint("mkstemp failed: %s\n", strerror(errno));
+  if (-1 == (fd = mkstemp(fullpath))) {
+    eprint("mkstemp failed: %s", strerror(errno));
     goto out;
   } else {
     if (-1 == close(fd)) {
-      eprint("close failed: %s\n", strerror(errno));
+      eprint("close failed: %s", strerror(errno));
     }
   }
-  dprint("create temp file <%s> in dir <%s>\n", template, cwd);
-  //XXX+TODO: join path ?? (cwd, pathname
-  emalloc(pathname, String, sizeof(template), __func__);
-  strcpy(pathname, template);
-  make_malloced_string(pathname, strlen(pathname), result);
 
-  if (nargs == 1) {
-    if (-1 == chdir(currdir)) {
-      eprint("%s <%s>\n", strerror(errno), currdir);
-      goto out;
-    }
-    cwd = currdir;
-  }
-  dprint("cwd is <%s>\n", cwd);
+  dprint("create temp file <%s>\n", fullpath);
+  erealloc(pathname, String, strlen(fullpath)+1, __func__);
+  strcpy(pathname, fullpath);
+  make_malloced_string(pathname, strlen(pathname), result);
   
  out:
   free(currdir);
+  free(fullpath);
   return result;
-
 }
 
 static awk_value_t * do_rm(int nargs, awk_value_t *result, struct awk_ext_func *finfo) {
   /*
-  * Removes the $nargs[0] file or directory (if epmty)
+  * Removes the $nargs[0] file (or directory, if epmty).
   * using the remove system call.
   * See <man 3 remove> for details.
   */
@@ -200,7 +255,7 @@ static awk_value_t * do_rm(int nargs, awk_value_t *result, struct awk_ext_func *
   }
 
   if (-1 == remove(pathname.str_value.str)) {
-    eprint("%s <%s>\n", strerror(errno), pathname.str_value.str);
+    eprint("<%s> %s", pathname.str_value.str, strerror(errno));
     goto out;
   }
   
