@@ -104,6 +104,7 @@ String path_join(String first, String last) {
     return NULL;
   }
   joined = strncpy(joined, first, strlen(first));
+  joined[strlen(first)] = '\0';
   if (strncmp(& first[strlen(first)-1], _PATHSEP, 1))
     strncat(joined, _PATHSEP, strlen(_PATHSEP));
   strncat(joined, last, strlen(last));
@@ -210,10 +211,7 @@ static awk_value_t * do_mktemp(int nargs, awk_value_t *result, struct awk_ext_fu
     cwd = tmp_dir.str_value.str;
   }
 
-  if (NULL == (fullpath = path_join(cwd, template)))
-    goto out;
-
-  if (-1 == (fd = mkstemp(fullpath))) {
+  if (-1 == (fd = mkstemp(template))) {
     eprint("mkstemp failed: %s", strerror(errno));
     goto out;
   } else {
@@ -221,6 +219,11 @@ static awk_value_t * do_mktemp(int nargs, awk_value_t *result, struct awk_ext_fu
       eprint("close failed: %s", strerror(errno));
     }
   }
+
+  if (NULL == (fullpath = path_join(cwd, template)))
+    goto out;
+
+  printf("XXXX create temp file <%s>\n", fullpath);
 
   dprint("create temp file <%s>\n", fullpath);
   erealloc(pathname, String, strlen(fullpath)+1, __func__);
