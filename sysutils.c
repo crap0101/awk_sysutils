@@ -27,6 +27,20 @@
 #define dprint(fmt, ...) do {} while (0)
 #endif
 
+#define name_to_string(name) #name
+
+const char *_val_types[] = {
+    "AWK_UNDEFINED",
+    "AWK_NUMBER",
+    "AWK_STRING",
+    "AWK_REGEX",
+    "AWK_STRNUM",
+    "AWK_ARRAY",
+    "AWK_SCALAR",
+    "AWK_VALUE_COOKIE",
+    "AWK_BOOL"
+};
+
 typedef char * String;
 
 static awk_value_t * do_getcwd(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
@@ -247,16 +261,17 @@ static awk_value_t * do_rm(int nargs, awk_value_t *result, struct awk_ext_func *
     eprint("one argument expected: path_to_file_or_dir\n");
     goto out;
   }
+
   if (! get_argument(0, AWK_STRING, & pathname)) {
     if (pathname.val_type != AWK_STRING)
-      eprint("wrong type argument: <%d> (expected: <%d>)\n", pathname.val_type, AWK_STRING); //XXX+TODO: ++meaningful
+      eprint("wrong type argument: <%s> (expected: <%s>)\n", _val_types[pathname.val_type], name_to_string(AWK_STRING));
     else
       eprint("can't get path <%s>\n", pathname.str_value.str);
     goto out;
   }
 
   if (-1 == remove(pathname.str_value.str)) {
-    eprint("<%s> %s", pathname.str_value.str, strerror(errno));
+    eprint("<%s> %s\n", pathname.str_value.str, strerror(errno));
     goto out;
   }
   
