@@ -10,6 +10,8 @@
 
 #include "gawkapi.h"
 
+extern int access(const char *, int);
+
 #if defined(__WIN32) || defined(__WIN64)
  #define _PATHSEP "\\"
 #else
@@ -43,6 +45,7 @@ const char *_val_types[] = {
 
 typedef char * String;
 
+static awk_value_t * do_check_path(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 static awk_value_t * do_getcwd(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 static awk_value_t * do_mktemp(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 static awk_value_t * do_rm(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
@@ -55,6 +58,7 @@ static awk_ext_id_t ext_id;
 static const char *ext_version = "0.1";
 
 static awk_ext_func_t func_table[] = {
+  { "check_path", do_check_path, 1, 1, awk_false, NULL },
   { "getcwd", do_getcwd, 0, 0, awk_false, NULL },
   { "mktemp", do_mktemp, 1, 0, awk_false, NULL },
   { "rm", do_rm, 1, 1, awk_false, NULL },
@@ -125,6 +129,14 @@ String path_join(String first, String last) {
   return joined;
 }
 
+int check_path(String path) {
+  /*
+   * Loosly check if a file/dir exists and is readable and writable.
+   * see <man 2 access> for details.
+   */
+  return access(path, R_OK | W_OK);
+}
+
 String get_current_dir(String dest, size_t size) {
   /*
    * Writes on $dest the path of the current working directory,
@@ -155,6 +167,35 @@ String get_current_dir(String dest, size_t size) {
 /* EXTENSION FUNCTIONS */
 /***********************/
 
+static awk_value_t * do_check_path(int nargs, awk_value_t *result, struct awk_ext_func *finfo) {
+  /*
+   * Loosely checks if a file/dir exists and is readable and writable.
+   * Return true if success, 0 otherwise (non-existent path, no permissions, etc.).
+   * see <man 2 access> for details.
+   */
+  awk_value_t path;
+  assert(result != NULL);
+  make_number(0, result);
+
+  if (nargs > 1) {
+    eprint("too many arguments\n");
+    goto out;
+  }
+  if (! get_argument(0, AWK_STRING, & path)) {
+    eprint("can't retrieve path\n");
+    goto out;
+  }
+      
+  if (-1 == check_path(path.str_value.str)) {
+    eprint("%s <%s>\n", strerror(errno), path.str_value.str);
+    goto out;
+  }
+
+  make_number(1, result);
+ out:
+  return result;
+}
+
 static awk_value_t * do_getcwd(int nargs, awk_value_t *result, struct awk_ext_func *finfo) {
   /*
    * Returns the path of the current working directory,
@@ -170,7 +211,7 @@ static awk_value_t * do_getcwd(int nargs, awk_value_t *result, struct awk_ext_fu
   make_malloced_string(pathname, strlen(pathname), result);
 
   if (nargs > 0) {
-    eprint("too many arguments");
+    eprint("too many arguments\n");
     goto out;
   }
   if (NULL == (current_dir = get_current_dir(current_dir, dir_size)))
