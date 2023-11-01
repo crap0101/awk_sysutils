@@ -169,7 +169,7 @@ String get_current_dir(String dest, size_t size) {
 
 static awk_value_t * do_check_path(int nargs, awk_value_t *result, struct awk_ext_func *finfo) {
   /*
-   * Loosely checks if a file/dir exists and is readable and writable.
+   * Loosely checks if a file/dir exists and is readable *and* writable.
    * Return true if success, 0 otherwise (non-existent path, no permissions, etc.).
    * see <man 2 access> for details.
    */
@@ -187,7 +187,7 @@ static awk_value_t * do_check_path(int nargs, awk_value_t *result, struct awk_ex
   }
       
   if (-1 == check_path(path.str_value.str)) {
-    eprint("%s <%s>\n", strerror(errno), path.str_value.str);
+    eprint("<%s> %s\n", path.str_value.str, strerror(errno));
     goto out;
   }
 
@@ -256,7 +256,7 @@ static awk_value_t * do_mktemp(int nargs, awk_value_t *result, struct awk_ext_fu
   cwd = currdir;
   
   if (nargs > 1) {
-    eprint("too many arguments");
+    eprint("too many arguments\n");
     goto out;
   } else if (nargs == 1) {
     if (! get_argument(0, AWK_STRING, & tmp_dir)) {
@@ -299,7 +299,7 @@ static awk_value_t * do_rm(int nargs, awk_value_t *result, struct awk_ext_func *
   make_number(0.0, result);
   awk_value_t pathname;
   if (nargs != 1) {
-    eprint("one argument expected: path_to_file_or_dir\n");
+    eprint("too many arguments! One expected: path_to_file_or_dir\n");
     goto out;
   }
 
