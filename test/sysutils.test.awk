@@ -23,12 +23,19 @@ BEGIN {
     
     # TEST check_path
     t1 = sys::mktemp()
-    testing::assert_true(sys::check_path(t1), 1, "> checkpath tempfile")
+    testing::assert_true(sys::check_path(t1), 1, "> check_path tempfile")
+    testing::assert_equal(sys::check_path(t1), sys::check_path(t1, "r"), 1, "> check_path [no args] eq [r]")
+    testing::assert_equal(sys::check_path(t1), sys::check_path(t1, ""), 1, "> check_path [empty] eq [r]")
+    testing::assert_true(sys::check_path(t1, "w"), 1, "> check_path tempfile [w]")
+    testing::assert_true(sys::check_path(t1, "rw"), 1, "> check_path tempfile [rw]")
+    testing::assert_false(sys::check_path(t1, "x"), 1, "> ! check_path tempfile [x]")
+    testing::assert_false(sys::check_path(t1, "rx"), 1, "> ! check_path tempfile [rx]")
+    testing::assert_false(sys::check_path(t1, "b"), 1, "> ! check_path tempfile [b]")
     @dprint("* rm t1")
     sys::rm(t1)
-    testing::assert_false(sys::check_path(t1), 1, "> ! checkpath tempfile")
-    testing::assert_false(sys::check_path(1+0), 1, "> ! checkpath [fake path]")
-    testing::assert_false(sys::check_path(1, 2), 1, "> ! checkpath [wrong args number]")
+    testing::assert_false(sys::check_path(t1), 1, "> ! check_path tempfile")
+    testing::assert_false(sys::check_path(1+0), 1, "> ! check_path [fake path]")
+    testing::assert_false(sys::check_path(1, 2, 3), 1, "> ! check_path [wrong args number]")
     #testing::assert_false(sys::check_path(), 1, "> ! checkpath [no args]") # brutal fail: exits
 
     # TEST mktemp and getcwd too

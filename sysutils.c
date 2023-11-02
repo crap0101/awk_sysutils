@@ -58,7 +58,7 @@ static awk_ext_id_t ext_id;
 static const char *ext_version = "0.1";
 
 static awk_ext_func_t func_table[] = {
-  { "check_path", do_check_path, 1, 1, awk_false, NULL },
+  { "check_path", do_check_path, 2, 1, awk_false, NULL },
   { "getcwd", do_getcwd, 0, 0, awk_false, NULL },
   { "mktemp", do_mktemp, 1, 0, awk_false, NULL },
   { "rm", do_rm, 1, 1, awk_false, NULL },
@@ -129,12 +129,13 @@ String path_join(String first, String last) {
   return joined;
 }
 
-int check_path(String path) {
+int check_path(String path, int mask) {
   /*
    * Loosly check if a file/dir exists and is readable and writable.
    * see <man 2 access> for details.
+   * $mask can be R_OK, W_OK, X_OK or a bitwise of them.
    */
-  return access(path, R_OK | W_OK);
+  return access(path, mask);
 }
 
 String get_current_dir(String dest, size_t size) {
@@ -172,12 +173,18 @@ static awk_value_t * do_check_path(int nargs, awk_value_t *result, struct awk_ex
    * Loosely checks if a file/dir exists and is readable *and* writable.
    * Return true if success, 0 otherwise (non-existent path, no permissions, etc.).
    * see <man 2 access> for details.
+   * Accetps one or two arguments. The first must a path to the file/dir to check,
+   * the (optional) second argument must a string representing the file mode
+   * (readable, writable, ...), written as a combination of "r" "w" "x".
+   * Default to "r" only.
    */
   awk_value_t path;
+  awk_value_t mask_s;
+  size_t i, mask = 0;
   assert(result != NULL);
   make_number(0, result);
 
-  if (nargs > 1) {
+  if (nargs > 2) {
     eprint("too many arguments\n");
     goto out;
   }
@@ -185,8 +192,26 @@ static awk_value_t * do_check_path(int nargs, awk_value_t *result, struct awk_ex
     eprint("can't retrieve path\n");
     goto out;
   }
-      
-  if (-1 == check_path(path.str_value.str)) {
+  if (nargs == 2) {
+      if (! get_argument(1, AWK_STRING, & mask_s)) {
+	eprint("can't retrieve mask\n");
+	goto out;
+      }
+      for (i=0; i<mask_s.str_value.len; i++) {
+	switch (mask_s.str_value.str[i]) {
+	case 'r': mask |= R_OK; break;
+	case 'w': mask |= W_OK; break;
+	case 'x': mask |= X_OK; break;
+	default:
+	  eprint("Unknown mask value <%c>\n", mask_s.str_value.str[i]);
+	  goto out;
+	}
+      }
+  } else {
+    mask = R_OK;
+  }
+
+  if (-1 == check_path(path.str_value.str, mask)) {
     eprint("<%s> %s\n", path.str_value.str, strerror(errno));
     goto out;
   }
