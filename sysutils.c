@@ -10,40 +10,14 @@
 
 #include "gawkapi.h"
 
-extern int access(const char *, int);
+#include "awk_extensions.h"
+// https://github.com/crap0101/laundry_basket/blob/master/awk_extensions.h
 
-#if defined(__WIN32) || defined(__WIN64)
- #define _PATHSEP "\\"
-#else
- #define _PATHSEP "/"
+#if defined(__module__)
+ #undef __module__
 #endif
-
 #define __module__ "sysutils"
-#define eprint(fmt, ...) fprintf(stderr, __msg_prologue fmt, __module__, __func__, ##__VA_ARGS__)
-#define _DEBUGLVL 0
-#if (_DEBUGLVL)
-#define dprint eprint
-#define __msg_prologue "Debug: %s @%s: "
-#else
-#define __msg_prologue "Error: %s @%s: "
-#define dprint(fmt, ...) do {} while (0)
-#endif
 
-#define name_to_string(name) #name
-
-const char *_val_types[] = {
-    "AWK_UNDEFINED",
-    "AWK_NUMBER",
-    "AWK_STRING",
-    "AWK_REGEX",
-    "AWK_STRNUM",
-    "AWK_ARRAY",
-    "AWK_SCALAR",
-    "AWK_VALUE_COOKIE",
-    "AWK_BOOL"
-};
-
-typedef char * String;
 
 static awk_value_t * do_check_path(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 static awk_value_t * do_getcwd(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
@@ -347,5 +321,5 @@ static awk_value_t * do_rm(int nargs, awk_value_t *result, struct awk_ext_func *
 }
 
 /* COMPILE WITH:
-gcc -fPIC -shared -DHAVE_CONFIG_H -c -O -g -I/usr/include -Wall -Wextra sysutils.c && gcc -o sysutils.so -shared sysutils.o && cp sysutils.so ~/local/lib/awk/
+gcc -fPIC -shared -DHAVE_CONFIG_H -c -O -g -I/usr/include -I~/local/include/awk -Wall -Wextra sysutils.c && gcc -o sysutils.so -shared sysutils.o && cp sysutils.so ~/local/lib/awk/
 */

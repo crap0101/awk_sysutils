@@ -7,8 +7,8 @@
 
 @include "awkpot"
 # https://github.com/crap0101/awkpot
-@include "testing.awk"
-# https://github.com/crap0101/laundry_basket/blob/master/testing.awk
+@include "awk_testing.awk"
+# https://github.com/crap0101/laundry_basket/blob/master/awk_testing.awk
 
 BEGIN {
     if (awk::SYS_DEBUG) {
