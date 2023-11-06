@@ -10,14 +10,12 @@
 
 #include "gawkapi.h"
 
-#include "awk_extensions.h"
-// https://github.com/crap0101/laundry_basket/blob/master/awk_extensions.h
-
-#if defined(__module__)
- #undef __module__
-#endif
+// define these before include awk_extensions.h
+#define _DEBUGLEVEL 0
 #define __module__ "sysutils"
 
+#include "awk_extensions.h"
+// https://github.com/crap0101/laundry_basket/blob/master/awk_extensions.h
 
 static awk_value_t * do_check_path(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 static awk_value_t * do_getcwd(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
