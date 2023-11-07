@@ -36,7 +36,7 @@ static awk_ext_func_t func_table[] = {
   { "rm", do_rm, 1, 1, awk_false, NULL },
 };
 
-static awk_bool_t (*init_func)(void) = NULL;
+__attribute__((unused)) static awk_bool_t (*init_func)(void) = NULL;
 
 
 int dl_load(const gawk_api_t *api_p, void *id) {
@@ -140,7 +140,7 @@ String get_current_dir(String dest, size_t size) {
 /* EXTENSION FUNCTIONS */
 /***********************/
 
-static awk_value_t * do_check_path(int nargs, awk_value_t *result, struct awk_ext_func *finfo) {
+static awk_value_t * do_check_path(int nargs, awk_value_t *result, __attribute__((unused)) struct awk_ext_func *finfo) {
   /*
    * Loosely checks if a file/dir exists and is readable *and* writable.
    * Return true if success, 0 otherwise (non-existent path, no permissions, etc.).
@@ -193,7 +193,7 @@ static awk_value_t * do_check_path(int nargs, awk_value_t *result, struct awk_ex
   return result;
 }
 
-static awk_value_t * do_getcwd(int nargs, awk_value_t *result, struct awk_ext_func *finfo) {
+static awk_value_t * do_getcwd(int nargs, awk_value_t *result, __attribute__((unused)) struct awk_ext_func *finfo) {
   /*
    * Returns the path of the current working directory,
    * or an empty string if fails.
@@ -223,7 +223,7 @@ static awk_value_t * do_getcwd(int nargs, awk_value_t *result, struct awk_ext_fu
   return result;
 }
 
-static awk_value_t * do_mktemp(int nargs, awk_value_t *result, struct awk_ext_func *finfo) {
+static awk_value_t * do_mktemp(int nargs, awk_value_t *result, __attribute__((unused)) struct awk_ext_func *finfo) {
   /*
   * Returns the path of a just created temporary file,
   * or the empty string if fails.
@@ -286,7 +286,7 @@ static awk_value_t * do_mktemp(int nargs, awk_value_t *result, struct awk_ext_fu
   return result;
 }
 
-static awk_value_t * do_rm(int nargs, awk_value_t *result, struct awk_ext_func *finfo) {
+static awk_value_t * do_rm(int nargs, awk_value_t *result, __attribute__((unused)) struct awk_ext_func *finfo) {
   /*
   * Removes the $nargs[0] file (or directory, if epmty).
   * using the remove system call.
