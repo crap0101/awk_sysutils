@@ -7,7 +7,7 @@
 
 @include "awkpot"
 # https://github.com/crap0101/awkpot
-@include "awk_testing.awk"
+@include "testing"
 # https://github.com/crap0101/awk_testing
 
 BEGIN {
