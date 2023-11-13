@@ -45,8 +45,8 @@ int dl_load(const gawk_api_t *api_p, void *id) {
   int errors = 0;
   long unsigned int i;
   
-  if (api->major_version != GAWK_API_MAJOR_VERSION
-      || api->minor_version < GAWK_API_MINOR_VERSION) {
+  if (api->major_version < 3) { //!= GAWK_API_MAJOR_VERSION
+      //    || api->minor_version < GAWK_API_MINOR_VERSION) {
     eprint("incompatible api version:  %d.%d != %d.%d (extension/gawk version)\n",
 	   GAWK_API_MAJOR_VERSION, GAWK_API_MINOR_VERSION, api->major_version, api->minor_version);
     exit(1);
