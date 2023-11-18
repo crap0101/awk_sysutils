@@ -318,6 +318,6 @@ static awk_value_t * do_rm(int nargs, awk_value_t *result, __attribute__((unused
   return result;
 }
 
-/* COMPILE WITH:
-gcc -fPIC -shared -DHAVE_CONFIG_H -c -O -g -I/usr/include -I~/local/include/awk -Wall -Wextra sysutils.c && gcc -o sysutils.so -shared sysutils.o && cp sysutils.so ~/local/lib/awk/
+/* COMPILE WITH (me, not necessary you):
+gcc -fPIC -shared -DHAVE_CONFIG_H -c -O -g -I/usr/include -iquote ~/local/include/awk -Wall -Wextra sysutils.c && gcc -o sysutils.so -shared sysutils.o && cp sysutils.so ~/local/lib/awk/
 */
