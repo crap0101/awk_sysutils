@@ -1,7 +1,7 @@
 
 # NOTE:
 # uses external shell commands to perform some tests:
-# pwd, which
+# pwd, which, whoami
 
 @load "sysutils"
 
@@ -30,13 +30,18 @@ BEGIN {
     testing::assert_true(sys::check_path(t1, "rw"), 1, "> check_path tempfile [rw]")
     testing::assert_false(sys::check_path(t1, "x"), 1, "> ! check_path tempfile [x]")
     testing::assert_false(sys::check_path(t1, "rx"), 1, "> ! check_path tempfile [rx]")
-    testing::assert_false(sys::check_path(t1, "b"), 1, "> ! check_path tempfile [b]")
+
+    cmd = sprintf("%s -l sysutils 'BEGIN { sys::check_path("", \"b\")}'", ARGV[0])
+    testing::assert_false(awkpot::exec_command(cmd), 1, "> ! check_path: wrong mask [b]")
+
     @dprint("* rm t1")
     sys::rm(t1)
-    testing::assert_false(sys::check_path(t1), 1, "> ! check_path tempfile")
+    testing::assert_false(sys::check_path(t1), 1, "> ! check_path tempfile [deleted]")
     testing::assert_false(sys::check_path(1+0), 1, "> ! check_path [fake path]")
-    testing::assert_false(sys::check_path(1, 2, 3), 1, "> ! check_path [wrong args number]")
-    #testing::assert_false(sys::check_path(), 1, "> ! checkpath [no args]") # brutal fail: exits
+    cmd = sprintf("%s -l sysutils 'BEGIN { sys::check_path(1,2,3)}'", ARGV[0])
+    testing::assert_false(awkpot::exec_command(cmd), 1, "> ! check_path: [too many args]")
+    cmd = sprintf("%s -l sysutils 'BEGIN { sys::check_path()}'", ARGV[0])
+    testing::assert_false(awkpot::exec_command(cmd), 1, "> ! check_path [no args]")
 
     # TEST mktemp and getcwd too
     t1 = sys::mktemp()
@@ -49,7 +54,9 @@ BEGIN {
     testing::assert_equal(_base, cwd, 1, "> _base == cwd")
 
     # TEST mktemp, rm
-    testing::assert_false(sys::mktemp(1, 2), 1, "> ! mktemp [wrong args number]")
+    #XXX+TODO: update fatal fail tests
+    cmd = sprintf("%s -l sysutils 'BEGIN { sys::mktemp(1, 2)}'", ARGV[0])
+    testing::assert_false(awkpot::exec_command(cmd), 1, "> ! mktemp [wrong args number]")
 
     t1 = sys::mktemp()
     testing::assert_true(sys::check_path(t1), 1, "> checkpath tempfile")
@@ -77,13 +84,18 @@ BEGIN {
     testing::assert_false(sys::rm(t1), 1, "> ! check rm t1")
     ("which sed" | getline binf)
     close("which sed")
-    if (binf)
+    ("whoami" | getline iam)
+    close("whoami")
+    if (binf && iam != "root")
 	# ^L^
 	if (! sys::check_path(binf))
-	    testing::assert_false(sys::rm(binf), 1, "> check rm [perm]")
+	    testing::assert_false(sys::rm(binf), 1, "> ! check rm [no perm]")
     
-    #testing::assert_false(sys::rm(), 1, "> ! check rm [no args]") # brutal fail: exits
-    testing::assert_false(sys::rm(1,2), 1, "> ! check rm [too many args]")
+    cmd = sprintf("%s -l sysutils 'BEGIN { sys::rm()}'", ARGV[0])
+    testing::assert_false(awkpot::exec_command(cmd), 1, "> ! check rm [no args]")
+    
+    cmd = sprintf("%s -l sysutils 'BEGIN { sys::rm(1, 2)}'", ARGV[0])
+    testing::assert_false(awkpot::exec_command(cmd), 1, "> ! check rm [too many args]")
 
     testing::end_test_report()
     testing::report()

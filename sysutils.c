@@ -101,11 +101,15 @@ path_join(String first, String last)
   joined = strncpy(joined, first, strlen(first));
   joined[strlen(first)] = '\0';
   if (strncmp(& first[strlen(first)-1], _PATHSEP, 1)) {
-    /* NOTE: using strcat to silence the senseless
+    /* NOTE_W: 
+     * wtf???
+     * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=83404
+     * tempted to use strcat to silence the senseless
      * `specified bound 1 equals source length [-Wstringop-overflow=` warning
-     * since the allocated space is surely enought.
+     * since the allocated space is surely enought... but, change
+     * the defines in awk_extension.h is enough, and maybe even clearer.
      */
-    joined = strcat(joined, _PATHSEP);
+    joined = strncat(joined, _PATHSEP, strlen(_PATHSEP));
   }
   joined = strncat(joined, last, strlen(last));
   return joined;
