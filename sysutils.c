@@ -40,6 +40,7 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 
 static awk_value_t * do_check_path(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 static awk_value_t * do_getcwd(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
+static awk_value_t * do_get_pathsep(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 static awk_value_t * do_mktemp(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 static awk_value_t * do_rm(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 
@@ -53,6 +54,7 @@ static const char *ext_version = "0.1";
 static awk_ext_func_t func_table[] = {
   { "check_path", do_check_path, 2, 1, awk_false, NULL },
   { "getcwd", do_getcwd, 0, 0, awk_false, NULL },
+  { "get_pathsep", do_get_pathsep, 0, 0, awk_false, NULL },
   { "mktemp", do_mktemp, 1, 0, awk_false, NULL },
   { "rm", do_rm, 1, 1, awk_false, NULL },
 };
@@ -268,6 +270,28 @@ do_getcwd(int nargs,
   free(current_dir);
   return result;
 }
+
+
+static awk_value_t*
+do_get_pathsep(int nargs,
+	  awk_value_t *result,
+	  __attribute__((unused)) struct awk_ext_func *finfo)
+{
+  /*
+   * Returns the system's path separator.
+   */
+  String ps = NULL;
+
+  assert(result != NULL);
+  if (nargs > 0)
+    fatal(ext_id, "%s takes no arguments\n", __func__);
+  
+  erealloc(ps, String, strlen(_PATHSEP)+1, __func__);
+  strcpy(ps, _PATHSEP);
+  make_malloced_string(ps, strlen(ps), result);
+  return result;
+}
+
 
 static awk_value_t*
 do_mktemp(int nargs,
