@@ -34,9 +34,15 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 // define these before include awk_extensions.h
 #define _DEBUGLEVEL 0
 #define __module__ "sysutils"
+#define __namespace__ "sys"
+static const gawk_api_t *api;
+static awk_ext_id_t ext_id;
+static const char *ext_version = "0.1";
 
+// ... and now include other own utilities
 #include "awk_extensions.h"
 // https://github.com/crap0101/laundry_basket/blob/master/awk_extensions.h
+
 
 static awk_value_t * do_check_path(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 static awk_value_t * do_getcwd(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
@@ -46,10 +52,6 @@ static awk_value_t * do_rm(int nargs, awk_value_t *result, struct awk_ext_func *
 
 /* ----- boilerplate code ----- */
 int plugin_is_GPL_compatible;
-static const gawk_api_t *api;
-
-static awk_ext_id_t ext_id;
-static const char *ext_version = "0.1";
 
 static awk_ext_func_t func_table[] = {
   { "check_path", do_check_path, 2, 1, awk_false, NULL },
@@ -76,7 +78,7 @@ int dl_load(const gawk_api_t *api_p, void *id) {
   }
   
   for (i=0; i < sizeof(func_table) / sizeof(awk_ext_func_t); i++) {
-    if (! add_ext_func("sys", & func_table[i])) {
+    if (! add_ext_func(__namespace__, & func_table[i])) {
       eprint("can't add extension function <%s>\n", func_table[0].name);
       errors++;
     }
@@ -87,26 +89,12 @@ int dl_load(const gawk_api_t *api_p, void *id) {
   return (errors == 0);
 }
 
-/* ---------------------------- */
+/* ----- end of boilerplate code ----------------------- */
+
 
 /*********************/
 /* UTILITY FUNCTIONS */
 /*********************/
-
-String
-alloc_string(String str, size_t size)
-{
-  /*
-  * Allocates $size bytes for the String $str and returns a pointer
-  * to the allocate memory (or NULL if something went wrong).
-  * $str must be either NULL or a pointer returned from a
-  * previously call of (c|m|re)alloc.
-  */
-    dprint("(re/alloc) size=%zu\n", size);
-    str = realloc(str, sizeof(String) * size);
-    return str;
-}
-
 
 String
 path_join(String first, String last)
